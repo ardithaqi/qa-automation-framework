@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test:example": "playwright test tests/examples/saucedemo",
+    "test:examples": "playwright test tests/examples/saucedemo",
     "test:smoke": "playwright test tests/smoke",
     "test:regression": "playwright test tests/regression",
     "test:all": "playwright test",

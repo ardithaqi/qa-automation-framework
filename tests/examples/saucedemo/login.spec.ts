@@ -10,7 +10,7 @@ test("user can login", async ({ page }) => {
   });
 
   await step("Login", async () => {
-    await login.login("standard_user", "secret_sauce");
+    await login.login("standard_user", "secret_sauces");
   });
 
   await step("Assert logged in", async () => {
