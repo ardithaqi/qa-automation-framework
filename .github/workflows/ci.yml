@@ -19,7 +19,7 @@ jobs:
 
       - name: Run tests inside Docker
         run: |
-          docker run --rm 
+          docker run --rm \
           -e BASE_URL=https://www.saucedemo.com \
           -e HEADLESS=true \
           -e PW_WORKERS=2 \
