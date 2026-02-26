@@ -2,31 +2,45 @@ import fs from "fs";
 import path from "path";
 import { analyzeFailureFile } from "../ai/failureAnalyzer";
 
+function findMetaFiles(dir: string, results: string[] = []): string[] {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+            findMetaFiles(fullPath, results);
+        } else if (entry.name === "meta.json") {
+            results.push(fullPath);
+        }
+    }
+
+    return results;
+}
+
 export default async function globalTeardown() {
     if (process.env.AI_ANALYSIS !== "true") return;
 
-    const failureDir = path.join("artifacts", "failures");
+    const runDir = fs.readFileSync(
+        path.join("artifacts", ".current-run"),
+        "utf-8"
+    );
+    if (!runDir || !fs.existsSync(runDir)) return;
 
-    if (!fs.existsSync(failureDir)) return;
+    const metaFiles = findMetaFiles(runDir);
 
-    const jsonFiles = fs
-        .readdirSync(failureDir)
-        .filter((f) => f.endsWith(".json"));
-
-    if (jsonFiles.length === 0) return;
+    if (metaFiles.length === 0) return;
 
     console.log("\nRunning AI failure analysis per test...\n");
 
-    for (const file of jsonFiles) {
-        const jsonPath = path.join(failureDir, file);
+    for (const metaPath of metaFiles) {
+        console.log(`Analyzing: ${metaPath}`);
 
-        console.log(`Analyzing: ${file}`);
-
-        const analysis = await analyzeFailureFile(jsonPath);
+        const analysis = await analyzeFailureFile(metaPath);
 
         if (!analysis) continue;
 
-        const outputFile = jsonPath.replace(".json", ".ai.txt");
+        const outputFile = metaPath.replace("meta.json", "ai.txt");
 
         fs.writeFileSync(outputFile, analysis);
 

@@ -29,6 +29,7 @@ export default defineConfig({
   workers: Number(process.env.PW_WORKERS ?? 2),
   retries: Number(process.env.PW_RETRIES ?? 1),
   globalTeardown: require.resolve("./src/core/globalTeardown"),
+  globalSetup: require.resolve("./src/core/globalSetup"),
   use: {
     baseURL: env.BASE_URL,
     headless: env.HEADLESS,

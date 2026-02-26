@@ -22,17 +22,21 @@ test.afterEach(async ({ page }, testInfo) => {
       body: screenshot,
       contentType: "image/png",
     });
-    const failureDir = path.join("artifacts", "failures");
 
-    if (!fs.existsSync(failureDir)) {
-      fs.mkdirSync(failureDir, { recursive: true });
-    }
-
+    const runDir = fs.readFileSync(
+      path.join("artifacts", ".current-run"),
+      "utf-8"
+    );
+    const specName = path.basename(testInfo.file);
     const safeTitle = testInfo.title.replace(/[^\w\d]/g, "_");
 
+    const testDir = path.join(runDir, specName, safeTitle);
+    fs.mkdirSync(testDir, { recursive: true });
+
     const html = await page.content();
+
     fs.writeFileSync(
-      path.join(failureDir, `${safeTitle}.html`),
+      path.join(testDir, "dom.html"),
       html
     );
 
@@ -48,7 +52,7 @@ test.afterEach(async ({ page }, testInfo) => {
     };
 
     fs.writeFileSync(
-      path.join(failureDir, `${safeTitle}.json`),
+      path.join(testDir, "meta.json"),
       JSON.stringify(meta, null, 2)
     );
   }
