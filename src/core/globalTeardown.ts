@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { analyzeLatestFailure } from "../ai/failureAnalyzer";
+import { analyzeFailureFile } from "../ai/failureAnalyzer";
 
 export default async function globalTeardown() {
     if (process.env.AI_ANALYSIS !== "true") return;
@@ -15,18 +15,21 @@ export default async function globalTeardown() {
 
     if (jsonFiles.length === 0) return;
 
-    console.log("\nRunning AI failure analysis...\n");
+    console.log("\nRunning AI failure analysis per test...\n");
 
-    const analysis = await analyzeLatestFailure();
+    for (const file of jsonFiles) {
+        const jsonPath = path.join(failureDir, file);
 
-    if (!analysis) return;
+        console.log(`Analyzing: ${file}`);
 
-    console.log("=== AI Analysis ===\n");
-    console.log(analysis);
-    console.log("\n===================\n");
+        const analysis = await analyzeFailureFile(jsonPath);
 
-    const outputPath = path.join(failureDir, "failure.ai.txt");
-    fs.writeFileSync(outputPath, analysis);
+        if (!analysis) continue;
 
-    console.log(`AI analysis saved to: ${outputPath}\n`);
+        const outputFile = jsonPath.replace(".json", ".ai.txt");
+
+        fs.writeFileSync(outputFile, analysis);
+
+        console.log(`Saved AI analysis: ${path.basename(outputFile)}\n`);
+    }
 }
