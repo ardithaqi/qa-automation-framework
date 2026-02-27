@@ -28,6 +28,7 @@ jobs:
           branch: ${{ github.base_ref }}
           name: ai-failure-artifacts
           path: baseline-artifacts
+          workflow_conclusion: ""
           if_no_artifact_found: warn
 
       - name: Build Docker image
