@@ -92,6 +92,54 @@ jobs:
           echo "Current:"
           ls -la artifacts || true
           
+      - name: Compute failure diff
+        if: always() && github.event_name == 'pull_request'
+        id: diff
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          function collectFailures(root) {
+            const failures = new Set();
+            if (!fs.existsSync(root)) return failures;
+
+            function walk(dir) {
+              for (const file of fs.readdirSync(dir)) {
+                const full = path.join(dir, file);
+                if (fs.statSync(full).isDirectory()) {
+                  walk(full);
+                } else if (file === "ai.txt") {
+                  const content = fs.readFileSync(full, "utf8");
+                  const jsonStart = content.indexOf("{");
+                  if (jsonStart === -1) continue;
+                  const data = JSON.parse(content.substring(jsonStart));
+                  const key = `${data.file}:${data.line}:${data.failure_type}`;
+                  failures.add(key);
+                }
+              }
+            }
+
+            walk(root);
+            return failures;
+          }
+
+          const baseline = collectFailures("baseline-artifacts");
+          const current = collectFailures("artifacts");
+
+          const newFailures = [...current].filter(x => !baseline.has(x));
+          const fixedFailures = [...baseline].filter(x => !current.has(x));
+          const unchangedFailures = [...current].filter(x => baseline.has(x));
+
+          const result = {
+            newFailures,
+            fixedFailures,
+            unchangedFailures
+          };
+
+          fs.writeFileSync("failure-diff.json", JSON.stringify(result, null, 2));
+          console.log("Diff result:", result);
+          EOF
 
       - name: Comment PR with AI summary
         if: always() && github.event_name == 'pull_request'
