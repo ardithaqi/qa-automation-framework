@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  docker-test:
+  AI-analysis-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +17,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t qa-framework .
 
-        - name: Run tests inside Docker
+      - name: Run tests inside Docker
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/app \
@@ -44,3 +44,15 @@ jobs:
         with:
           name: ai-failure-artifacts
           path: artifacts/
+
+      - name: Parse AI failure reports
+        if: always()
+        run: |
+          echo "Parsing AI failure reports..."
+          if [ -d "artifacts" ]; then
+            find artifacts -name "ai.txt" | while read file; do
+              echo "-----"
+              echo "File: $file"
+              json=$(awk '/^{/{flag=1} flag' "$file")
+              echo "$json" | jq .
+            done
