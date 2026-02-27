@@ -13,14 +13,13 @@ test("flaky regression", async ({ page }) => {
     await expect(page).toHaveURL(/inventory/);
 });
 
-test("forced regression", async ({ page }) => {
-    let firstRun = true;
+let firstRun = true;
 
-    test("flaky example", async () => {
-        if (firstRun) {
-            firstRun = false;
-            expect(1).toBe(2);
-        }
-        expect(1).toBe(1);
-    });
+test("flaky example", async () => {
+    if (firstRun) {
+        firstRun = false;
+        expect(1).toBe(2);
+    }
+
+    expect(1).toBe(1);
 });
