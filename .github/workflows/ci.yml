@@ -22,6 +22,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/app \
             -w /app \
+            -e AI_ANALYSIS=true \
             -e BASE_URL=https://www.saucedemo.com \
             -e HEADLESS=true \
             -e PW_WORKERS=2 \
