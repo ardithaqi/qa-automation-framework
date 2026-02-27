@@ -17,16 +17,18 @@ jobs:
       - name: Build Docker image
         run: docker build -t qa-framework .
 
-      - name: Run tests inside Docker
+        - name: Run tests inside Docker
         run: |
           docker run --rm \
-          -e BASE_URL=https://www.saucedemo.com \
-          -e HEADLESS=true \
-          -e PW_WORKERS=2 \
-          -e PW_RETRIES=1 \
-          -e TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
-          -e TEST_PASSWORD=${{ secrets.TEST_PASSWORD }} \
-          qa-framework
+            -v ${{ github.workspace }}:/app \
+            -w /app \
+            -e BASE_URL=https://www.saucedemo.com \
+            -e HEADLESS=true \
+            -e PW_WORKERS=2 \
+            -e PW_RETRIES=1 \
+            -e TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
+            -e TEST_PASSWORD=${{ secrets.TEST_PASSWORD }} \
+            qa-framework
       
       - name: Upload Playwright HTML report
         if: always()
