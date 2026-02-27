@@ -13,11 +13,11 @@ test("flaky regression", async ({ page }) => {
     await expect(page).toHaveURL(/inventory/);
 });
 
-let firstRun = true;
 
 test("flaky example", async () => {
-    if (firstRun) {
-        firstRun = false;
+    const attempt = test.info().retry;
+
+    if (attempt === 0) {
         expect(1).toBe(2);
     }
 
