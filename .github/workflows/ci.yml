@@ -188,8 +188,6 @@ jobs:
 
             const { newFailures, unchangedFailures, fixedFailures } = diff;
 
-            const severityEmoji = { low: "🟢", medium: "🟡", high: "🔴" };
-
             if (
               newFailures.length === 0 &&
               unchangedFailures.length === 0 &&
@@ -203,10 +201,9 @@ jobs:
 
             function formatList(title, list) {
               if (list.length === 0) return "";
-              let section = `${title} (${list.length})\n`;
+              let section = `### ${title} (${list.length})\n\n`;
               for (const item of list) {
-                const emoji = severityEmoji[item.severity] || "⚪";
-                section += `- ${item.file}:${item.line} | ${item.failure_type} | ${emoji} ${item.severity} | confidence ${item.confidence}\n`;
+                section += `- ${item.file}:${item.line} | ${item.failure_type} | severity: ${item.severity} | confidence: ${item.confidence}\n`;
               }
               return section + "\n";
             }
