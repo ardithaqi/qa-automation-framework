@@ -101,7 +101,8 @@ jobs:
           const path = require('path');
 
           function collectFailures(root) {
-            const failures = new Set();
+            const failures = [];
+
             if (!fs.existsSync(root)) return failures;
 
             function walk(dir) {
@@ -113,9 +114,16 @@ jobs:
                   const content = fs.readFileSync(full, "utf8");
                   const jsonStart = content.indexOf("{");
                   if (jsonStart === -1) continue;
+
                   const data = JSON.parse(content.substring(jsonStart));
-                  const key = `${data.file}:${data.line}:${data.failure_type}`;
-                  failures.add(key);
+
+                  failures.push({
+                    file: data.file,
+                    line: data.line,
+                    failure_type: data.failure_type,
+                    severity: data.severity,
+                    confidence: data.confidence
+                  });
                 }
               }
             }
@@ -127,14 +135,40 @@ jobs:
           const baseline = collectFailures("baseline-artifacts");
           const current = collectFailures("artifacts");
 
-          const newFailures = [...current].filter(x => !baseline.has(x));
-          const fixedFailures = [...baseline].filter(x => !current.has(x));
-          const unchangedFailures = [...current].filter(x => baseline.has(x));
+          function toMap(arr) {
+            const map = new Map();
+            for (const item of arr) {
+              const key = `${item.file}:${item.line}:${item.failure_type}`;
+              map.set(key, item);
+            }
+            return map;
+          }
+
+          const baselineMap = toMap(baseline);
+          const currentMap = toMap(current);
+
+          const newFailures = [];
+          const fixedFailures = [];
+          const unchangedFailures = [];
+
+          for (const [key, value] of currentMap.entries()) {
+            if (!baselineMap.has(key)) {
+              newFailures.push(value);
+            } else {
+              unchangedFailures.push(value);
+            }
+          }
+
+          for (const [key, value] of baselineMap.entries()) {
+            if (!currentMap.has(key)) {
+              fixedFailures.push(value);
+            }
+          }
 
           const result = {
             newFailures,
-            fixedFailures,
-            unchangedFailures
+            unchangedFailures,
+            fixedFailures
           };
 
           fs.writeFileSync("failure-diff.json", JSON.stringify(result, null, 2));
@@ -147,61 +181,39 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const path = require('path');
 
-            const root = "artifacts";
-            if (!fs.existsSync(root)) return;
+            if (!fs.existsSync("failure-diff.json")) return;
 
-            function findAiFiles(dir, results = []) {
-              for (const file of fs.readdirSync(dir)) {
-                const full = path.join(dir, file);
-                if (fs.statSync(full).isDirectory()) {
-                  findAiFiles(full, results);
-                } else if (file === "ai.txt") {
-                  results.push(full);
-                }
-              }
-              return results;
-            }
+            const diff = JSON.parse(fs.readFileSync("failure-diff.json", "utf8"));
 
-            const files = findAiFiles(root);
-            if (files.length === 0) return;
+            const { newFailures, unchangedFailures, fixedFailures } = diff;
 
             const severityEmoji = { low: "🟢", medium: "🟡", high: "🔴" };
 
-            let tableRows = "";
-            let detailedSections = "";
-
-            for (const file of files) {
-              const content = fs.readFileSync(file, "utf8");
-              const jsonStart = content.indexOf("{");
-              const data = JSON.parse(content.substring(jsonStart));
-
-              const emoji = severityEmoji[data.severity] || "⚪";
-
-              tableRows += `| ${path.basename(data.file)} | ${data.line} | ${data.failure_type} | ${emoji} ${data.severity} | ${data.confidence} |\n`;
-
-              const sectionLines = [
-                `### ${data.file}:${data.line}`,
-                "",
-                `Type: ${data.failure_type}`,
-                `Severity: ${emoji} ${data.severity}`,
-                `Confidence: ${data.confidence}`,
-                ""
-              ];
-              detailedSections += sectionLines.join("\n") + "\n";
+            if (
+              newFailures.length === 0 &&
+              unchangedFailures.length === 0 &&
+              fixedFailures.length === 0
+            ) {
+              console.log("No failures to report.");
+              return;
             }
 
-            const bodyLines = [
-              "## 🤖 AI Failure Summary",
-              "",
-              "| File | Line | Type | Severity | Confidence |",
-              "|------|------|------|----------|------------|",
-              tableRows ? tableRows.trimEnd() : "_No failures detected_",
-              "",
-              detailedSections.trimEnd()
-            ];
-            const body = bodyLines.join("\n");
+            let body = "## 🤖 AI Failure Diff Summary\n\n";
+
+            function formatList(title, list) {
+              if (list.length === 0) return "";
+              let section = `${title} (${list.length})\n`;
+              for (const item of list) {
+                const emoji = severityEmoji[item.severity] || "⚪";
+                section += `- ${item.file}:${item.line} | ${item.failure_type} | ${emoji} ${item.severity} | confidence ${item.confidence}\n`;
+              }
+              return section + "\n";
+            }
+
+            body += formatList("🆕 New Failures", newFailures);
+            body += formatList("⚠️ Still Failing", unchangedFailures);
+            body += formatList("✅ Fixed Failures", fixedFailures);
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -212,7 +224,7 @@ jobs:
             const existing = comments.find(c =>
               c.user.type === "Bot" &&
               typeof c.body === "string" &&
-              c.body.startsWith("## 🤖 AI Failure Summary")
+              c.body.startsWith("## 🤖 AI Failure Diff Summary")
             );
 
             if (existing) {
