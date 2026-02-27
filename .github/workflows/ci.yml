@@ -22,7 +22,7 @@ jobs:
         run: |
           set +e
           docker run --name qa-run \
-            -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
             -e AI_ANALYSIS=true \
             -e BASE_URL=https://www.saucedemo.com \
             -e HEADLESS=true \
