@@ -23,4 +23,5 @@ test("user can checkout", async ({ page }) => {
 
     await page.locator("[data-test='add-to-cart-sauce-labs-fleece-jacket']").click();
 
+    expect(1).toBe(2); // intentional failure
 });
