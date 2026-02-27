@@ -173,6 +173,11 @@ jobs:
 
           fs.writeFileSync("failure-diff.json", JSON.stringify(result, null, 2));
           console.log("Diff result:", result);
+
+          if (newFailures.some(f => f.severity === "high")) exit(1){
+            console.log(`New failures detected: ${newFailures.length}`);
+            process.exit(1);
+          }
           EOF
 
       - name: Comment PR with AI summary
