@@ -4,7 +4,6 @@ import LoginPage from "../../../src/examples/saucedemo/pages/loginPage";
 import { expect } from "../../../src/core/baseTest";
 
 test("user can login", async ({ page }) => {
-  expect(1).toBe(2);
   const login = new LoginPage(page);
 
   await step("Open login page", async () => {
@@ -18,4 +17,5 @@ test("user can login", async ({ page }) => {
   await step("Assert logged in", async () => {
     await login.assertLoggedIn();
   });
+  // expect(1).toBe(2);
 });

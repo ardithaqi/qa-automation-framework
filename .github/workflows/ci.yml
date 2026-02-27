@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   AI-analysis-test:
     runs-on: ubuntu-latest
@@ -62,7 +67,10 @@ jobs:
               json=$(awk '/^{/{flag=1} flag' "$file")
               echo "$json" | jq .
             done
-      
+          else
+            echo "No artifacts directory found."
+          fi
+
       - name: Comment PR with AI summary
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -74,11 +82,11 @@ jobs:
             const root = "artifacts";
             if (!fs.existsSync(root)) return;
 
-            function findJsonFiles(dir, results = []) {
+            function findAiFiles(dir, results = []) {
               for (const file of fs.readdirSync(dir)) {
                 const full = path.join(dir, file);
                 if (fs.statSync(full).isDirectory()) {
-                  findJsonFiles(full, results);
+                  findAiFiles(full, results);
                 } else if (file === "ai.txt") {
                   results.push(full);
                 }
@@ -86,26 +94,69 @@ jobs:
               return results;
             }
 
-            const files = findJsonFiles(root);
-
+            const files = findAiFiles(root);
             if (files.length === 0) return;
 
-            let body = "## 🤖 AI Failure Summary\n\n";
+            const severityEmoji = { low: "🟢", medium: "🟡", high: "🔴" };
+
+            let tableRows = "";
+            let detailedSections = "";
 
             for (const file of files) {
               const content = fs.readFileSync(file, "utf8");
-              const json = content.substring(content.indexOf("{"));
-              const data = JSON.parse(json);
+              const jsonStart = content.indexOf("{");
+              const data = JSON.parse(content.substring(jsonStart));
 
-              body += `**${data.file}**\n`;
-              body += `- Type: ${data.failure_type}\n`;
-              body += `- Severity: ${data.severity}\n`;
-              body += `- Confidence: ${data.confidence}\n\n`;
+              const emoji = severityEmoji[data.severity] || "⚪";
+
+              tableRows += `| ${path.basename(data.file)} | ${data.line} | ${data.failure_type} | ${emoji} ${data.severity} | ${data.confidence} |\n`;
+
+              const sectionLines = [
+                `### ${data.file}:${data.line}`,
+                "",
+                `Type: ${data.failure_type}`,
+                `Severity: ${emoji} ${data.severity}`,
+                `Confidence: ${data.confidence}`,
+                ""
+              ];
+              detailedSections += sectionLines.join("\n") + "\n";
             }
 
-            await github.rest.issues.createComment({
+            const bodyLines = [
+              "## 🤖 AI Failure Summary",
+              "",
+              "| File | Line | Type | Severity | Confidence |",
+              "|------|------|------|----------|------------|",
+              tableRows ? tableRows.trimEnd() : "_No failures detected_",
+              "",
+              detailedSections.trimEnd()
+            ];
+            const body = bodyLines.join("\n");
+
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body
+              issue_number: context.issue.number
             });
+
+            const existing = comments.find(c =>
+              c.user.type === "Bot" &&
+              typeof c.body === "string" &&
+              c.body.startsWith("## 🤖 AI Failure Summary")
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
