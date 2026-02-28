@@ -31,7 +31,6 @@ export default async function globalTeardown() {
 
     if (metaFiles.length === 0) return;
 
-    console.log("\nRunning AI failure analysis per test...\n");
 
     for (const metaPath of metaFiles) {
         console.log(`Analyzing: ${metaPath}`);

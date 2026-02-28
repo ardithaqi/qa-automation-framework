@@ -89,10 +89,10 @@ async function main() {
     body += `Last updated: ${now}\n`;
     if (commit) body += `Commit: ${commit}\n`;
     body += "\n";
-    body += formatSection("New Failures", realNewFailures);
+    body += formatSection("New Issues", realNewFailures);
     body += formatSection("Flaky", flaky, false);
     body += formatSection("Still Failing", unchangedFailures);
-    body += formatSection("Fixed Failures", fixedFailures);
+    body += formatSection("Fixed Issues", fixedFailures);
 
     const [owner, repo] = repoFull.split("/");
 
