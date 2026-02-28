@@ -82,7 +82,13 @@ async function main() {
         return section + "\n";
     }
 
+    const now = new Date().toISOString();
+    const commit = process.env.GITHUB_SHA?.slice(0, 7);
+
     let body = "## AI Failure Diff Summary\n\n";
+    body += `Last updated: ${now}\n`;
+    if (commit) body += `Commit: ${commit}\n`;
+    body += "\n";
     body += formatSection("New Failures", realNewFailures);
     body += formatSection("Flaky", flaky, false);
     body += formatSection("Still Failing", unchangedFailures);
