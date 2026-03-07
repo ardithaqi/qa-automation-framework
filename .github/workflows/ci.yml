@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  qa-ci-intelligence:
+  AI-analysis-test:
     runs-on: ubuntu-latest
 
     steps:
