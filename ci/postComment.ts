@@ -82,13 +82,16 @@ async function main() {
         return section + "\n";
     }
 
-    const now = new Date().toISOString();
     const commit = process.env.GITHUB_SHA?.slice(0, 7);
 
     let body = "## AI Failure Diff Summary\n\n";
-    body += `Last updated: ${now}\n`;
     if (commit) body += `Commit: ${commit}\n`;
     body += "\n";
+
+    if (unchangedFailures.length > 0) {
+        body += "⚠️ **Existing issues** from the base branch are still failing on this branch. This PR was not blocked by them. Fix these on this branch or on the base branch to get to green.\n\n";
+    }
+
     body += formatSection("New Issues", realNewFailures);
     body += formatSection("Flaky", flaky, false);
     body += formatSection("Still Failing", unchangedFailures);
